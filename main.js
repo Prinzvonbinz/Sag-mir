@@ -11,9 +11,7 @@
   const languageSelect = document.getElementById("languageSelect");
 
   let savedSentences = [];
-  let settings = {
-    darkMode: false,
-  };
+  let settings = { darkMode: false };
 
   const getVoices = () => speechSynthesis.getVoices();
 
@@ -31,8 +29,7 @@
       });
       const data = await res.json();
       return data.translatedText;
-    } catch (e) {
-      console.error("Übersetzung fehlgeschlagen", e);
+    } catch {
       return text;
     }
   }
@@ -44,7 +41,7 @@
       v.lang.startsWith(lang) && v.name.toLowerCase().includes("female")
     );
     if (!voice) {
-      showInfo("Keine weibliche Stimme für diese Sprache gefunden.");
+      showInfo("Keine weibliche Stimme gefunden.");
       return;
     }
 
@@ -66,10 +63,6 @@
         utterance.rate = 1.4;
         utterance.pitch = 0.6;
         break;
-      case "sexy":
-        utterance.rate = 1.05;
-        utterance.pitch = 1.8;
-        break;
     }
 
     speechSynthesis.speak(utterance);
@@ -84,7 +77,7 @@
     if (!text.trim()) return;
     savedSentences.push(text);
     localStorage.setItem("sentences", JSON.stringify(savedSentences));
-    showInfo("Satz gespeichert!");
+    showInfo("Gespeichert!");
   }
 
   function loadSavedSentences() {
@@ -94,7 +87,7 @@
   function clearSavedSentences() {
     savedSentences = [];
     localStorage.removeItem("sentences");
-    showInfo("Alle Sätze gelöscht.");
+    showInfo("Favoriten gelöscht.");
   }
 
   function applyDarkMode() {
@@ -149,18 +142,18 @@
       };
       container.appendChild(li);
     });
-    openModal("Gespeicherte Sätze", container, [{ text: "Schließen", onClick: () => {} }]);
+    openModal("Favoriten", container, [{ text: "Schließen", onClick: () => {} }]);
   }
 
   function openHelpMenu() {
     const helpHTML = `
       <ul style="text-align: left">
-        <li><b>/stimme</b> – Stimme automatisch weiblich</li>
-        <li><b>/sprache</b> – Sprache einstellen</li>
-        <li><b>/emotion</b> – Emotion wählen (neutral, fröhlich, traurig, wütend, sexuell)</li>
-        <li><b>/darkmode</b> – Dark Mode an/aus</li>
+        <li><b>/stimme</b> – Stimme weiblich automatisch</li>
+        <li><b>/sprache</b> – Sprache wählen</li>
+        <li><b>/emotion</b> – Emotion einstellen</li>
+        <li><b>/darkmode</b> – Dark Mode umschalten</li>
         <li><b>/save</b> – Satz speichern</li>
-        <li><b>/favoriten</b> – Gespeicherte Sätze anzeigen</li>
+        <li><b>/favoriten</b> – Favoriten anzeigen</li>
         <li><b>/reset</b> – Einstellungen zurücksetzen</li>
       </ul>`;
     openModal("Befehle & Hilfe", helpHTML, [{ text: "OK", onClick: () => {} }]);
@@ -170,9 +163,7 @@
   saveBtn.onclick = () => saveSentence(textInput.value);
   showSavedBtn.onclick = () => openSavedSentencesMenu();
   clearSavedBtn.onclick = () => {
-    if (confirm("Wirklich alle gespeicherten Sätze löschen?")) {
-      clearSavedSentences();
-    }
+    if (confirm("Favoriten wirklich löschen?")) clearSavedSentences();
   };
   toggleDarkModeBtn.onclick = () => {
     settings.darkMode = !settings.darkMode;
