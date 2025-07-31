@@ -1,420 +1,190 @@
-(() => {
-  const textInput = document.getElementById('textInput');
-  const speakBtn = document.getElementById('speakBtn');
-  const saveBtn = document.getElementById('saveBtn');
-  const savedListEl = document.getElementById('savedList');
-  const lastSavedContainer = document.getElementById('lastSavedContainer');
-  const clearSavedBtn = document.getElementById('clearSaved');
-  const toggleDarkModeBtn = document.getElementById('toggleDarkMode');
+(async () => {
+  const textInput = document.getElementById("textInput");
+  const speakBtn = document.getElementById("speakBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const showSavedBtn = document.getElementById("showSavedBtn");
+  const clearSavedBtn = document.getElementById("clearSavedBtn");
+  const toggleDarkModeBtn = document.getElementById("toggleDarkModeBtn");
+  const helpBtn = document.getElementById("helpBtn");
+  const infoText = document.getElementById("infoText");
+  const emotionSelect = document.getElementById("emotionSelect");
+  const languageSelect = document.getElementById("languageSelect");
 
-  const modal = document.getElementById('modal');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalBody = document.getElementById('modalBody');
-  const modalButtons = document.getElementById('modalButtons');
-  const modalClose = document.getElementById('modalClose');
-
-  // Einstellungen
+  let savedSentences = [];
   let settings = {
-    voiceGender: 'female',  // male or female
-    language: 'de-DE',       // Default Deutsch
-    emotion: 'neutral',      // neutral, happy, sad, angry
     darkMode: false,
   };
 
-  // LocalStorage Keys
-  const STORAGE_KEYS = {
-    savedSentences: 'sag_es_mir_saved_sentences',
-    settings: 'sag_es_mir_settings',
-  };
+  const getVoices = () => speechSynthesis.getVoices();
 
-  // Load settings
-  function loadSettings() {
-    const s = localStorage.getItem(STORAGE_KEYS.settings);
-    if (s) {
-      try {
-        const obj = JSON.parse(s);
-        settings = {...settings, ...obj};
-      } catch {}
+  async function translateText(text, targetLang) {
+    try {
+      const res = await fetch("https://libretranslate.de/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          q: text,
+          source: "auto",
+          target: targetLang,
+          format: "text"
+        })
+      });
+      const data = await res.json();
+      return data.translatedText;
+    } catch (e) {
+      console.error("Übersetzung fehlgeschlagen", e);
+      return text;
     }
   }
 
-  // Save settings
-  function saveSettings() {
-    localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings));
-  }
-
-  // Apply dark mode
-  function applyDarkMode() {
-    if (settings.darkMode) {
-      document.body.classList.add('dark');
-    } else {
-      document.body.classList.remove('dark');
+  async function speak(text) {
+    if (!text) return;
+    const lang = languageSelect.value;
+    const voice = getVoices().find(v =>
+      v.lang.startsWith(lang) && v.name.toLowerCase().includes("female")
+    );
+    if (!voice) {
+      showInfo("Keine weibliche Stimme für diese Sprache gefunden.");
+      return;
     }
+
+    const translated = await translateText(text, lang);
+    const utterance = new SpeechSynthesisUtterance(translated);
+    utterance.voice = voice;
+    utterance.lang = lang;
+
+    switch (emotionSelect.value) {
+      case "happy":
+        utterance.rate = 1.2;
+        utterance.pitch = 1.2;
+        break;
+      case "sad":
+        utterance.rate = 0.9;
+        utterance.pitch = 0.8;
+        break;
+      case "angry":
+        utterance.rate = 1.4;
+        utterance.pitch = 0.6;
+        break;
+      case "sexy":
+        utterance.rate = 1.05;
+        utterance.pitch = 1.8;
+        break;
+    }
+
+    speechSynthesis.speak(utterance);
   }
 
-  // Saved sentences
-  let savedSentences = [];
+  function showInfo(msg) {
+    infoText.textContent = msg;
+    setTimeout(() => (infoText.textContent = ""), 4000);
+  }
+
+  function saveSentence(text) {
+    if (!text.trim()) return;
+    savedSentences.push(text);
+    localStorage.setItem("sentences", JSON.stringify(savedSentences));
+    showInfo("Satz gespeichert!");
+  }
 
   function loadSavedSentences() {
-    const s = localStorage.getItem(STORAGE_KEYS.savedSentences);
-    if (s) {
-      try {
-        savedSentences = JSON.parse(s);
-      } catch {
-        savedSentences = [];
-      }
-    }
-    updateSavedList();
-  }
-
-  function saveSentence(sentence) {
-    if (sentence.trim().length === 0) return;
-    if (!savedSentences.includes(sentence)) {
-      savedSentences.unshift(sentence);
-      if (savedSentences.length > 20) savedSentences.pop();
-      localStorage.setItem(STORAGE_KEYS.savedSentences, JSON.stringify(savedSentences));
-      updateSavedList();
-      showInfo("Satz gespeichert!");
-    } else {
-      showInfo("Satz ist bereits gespeichert.");
-    }
+    savedSentences = JSON.parse(localStorage.getItem("sentences") || "[]");
   }
 
   function clearSavedSentences() {
     savedSentences = [];
-    localStorage.removeItem(STORAGE_KEYS.savedSentences);
-    updateSavedList();
+    localStorage.removeItem("sentences");
+    showInfo("Alle Sätze gelöscht.");
   }
 
-  function updateSavedList() {
-    if (savedSentences.length === 0) {
-      lastSavedContainer.style.display = 'none';
-      return;
-    }
-    lastSavedContainer.style.display = 'block';
-    savedListEl.innerHTML = '';
-    for (const s of savedSentences) {
-      const li = document.createElement('li');
-      li.textContent = s;
-      li.title = 'Zum Textfeld hinzufügen';
-      li.tabIndex = 0;
-      li.addEventListener('click', () => {
-        textInput.value = s;
-        textInput.focus();
-      });
-      li.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          li.click();
-        }
-      });
-      savedListEl.appendChild(li);
-    }
+  function applyDarkMode() {
+    document.body.classList.toggle("dark", settings.darkMode);
   }
 
-  // Show info below textarea
-  const infoEl = document.getElementById('info');
-  let infoTimeout;
-  function showInfo(msg) {
-    clearTimeout(infoTimeout);
-    infoEl.textContent = msg;
-    infoTimeout = setTimeout(() => {
-      infoEl.textContent = 'Tippe /hilfe für Befehle (z.B. /stimme, /sprache, /emotion, /darkmode)';
-    }, 4000);
+  function saveSettings() {
+    localStorage.setItem("settings", JSON.stringify(settings));
   }
 
-  // Speech synthesis helpers
-  function getVoices() {
-    return speechSynthesis.getVoices();
+  function loadSettings() {
+    const saved = JSON.parse(localStorage.getItem("settings") || "{}");
+    Object.assign(settings, saved);
+    applyDarkMode();
   }
 
-  function selectVoice(gender, lang) {
-    const voices = getVoices();
-    // Try exact lang match
-    let filtered = voices.filter(v => v.lang.toLowerCase().startsWith(lang.toLowerCase()));
-    if (filtered.length === 0) filtered = voices; // fallback
-    // Try to find by gender (not standardized, so a heuristic)
-    const genderKeywords = gender === 'male' ? ['male', 'man', 'boy'] : ['female', 'woman', 'girl'];
-    let voice = filtered.find(v => {
-      const name = v.name.toLowerCase();
-      return genderKeywords.some(k => name.includes(k));
-    });
-    if (!voice) voice = filtered[0];
-    return voice || null;
-  }
-
-  // Map emotion to speechSynthesis params (limited support)
-  function getEmotionParams(emotion) {
-    switch (emotion) {
-      case 'happy': return {rate: 1.2, pitch: 1.5};
-      case 'sad': return {rate: 0.8, pitch: 0.7};
-      case 'angry': return {rate: 1.3, pitch: 1.0};
-      default: return {rate: 1, pitch: 1};
-    }
-  }
-
-  function speak(text) {
-    if (!text || text.trim() === '') {
-      showInfo('Bitte gib einen Text ein!');
-      return;
-    }
-    // Check if text starts with a command
-    if (text.startsWith('/')) {
-      processCommand(text.toLowerCase().trim());
-      return;
-    }
-
-    // Speak normally
-    if (!('speechSynthesis' in window)) {
-      alert('Dein Browser unterstützt keine Sprachausgabe.');
-      return;
-    }
-
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = settings.language;
-    const voice = selectVoice(settings.voiceGender, settings.language);
-    if (voice) utter.voice = voice;
-    const emo = getEmotionParams(settings.emotion);
-    utter.rate = emo.rate;
-    utter.pitch = emo.pitch;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utter);
-    showInfo(`Lese vor mit ${settings.voiceGender}er Stimme, Sprache: ${settings.language}, Stimmung: ${settings.emotion}`);
-  }
-
-  // Command processor & menus
-  function processCommand(cmd) {
-    const parts = cmd.split(' ');
-    const baseCmd = parts[0];
-
-    switch (baseCmd) {
-      case '/stimme':
-        openVoiceMenu();
-        break;
-      case '/sprache':
-        openLanguageMenu();
-        break;
-      case '/emotion':
-        openEmotionMenu();
-        break;
-      case '/darkmode':
-        settings.darkMode = !settings.darkMode;
-        applyDarkMode();
-        saveSettings();
-        showInfo('Dark Mode ' + (settings.darkMode ? 'aktiviert' : 'deaktiviert'));
-        break;
-      case '/save':
-        saveSentence(textInput.value);
-        break;
-      case '/favoriten':
-        openSavedSentencesMenu();
-        break;
-      case '/hilfe':
-        openHelpMenu();
-        break;
-      case '/reset':
-        settings = {
-          voiceGender: 'female',
-          language: 'de-DE',
-          emotion: 'neutral',
-          darkMode: false,
-        };
-        applyDarkMode();
-        saveSettings();
-        showInfo('Einstellungen zurückgesetzt');
-        break;
-      default:
-        showInfo('Unbekannter Befehl: ' + cmd);
-        break;
-    }
-  }
-
-  // Modal helper functions
-  function openModal(title, bodyContent, buttons = []) {
-    modalTitle.textContent = title;
-    modalBody.innerHTML = '';
-    if (typeof bodyContent === 'string') {
-      modalBody.innerHTML = bodyContent;
+  function openModal(title, content, buttons) {
+    const modal = document.getElementById("modal");
+    document.getElementById("modalTitle").innerText = title;
+    const body = document.getElementById("modalBody");
+    if (typeof content === "string") {
+      body.innerHTML = content;
     } else {
-      modalBody.appendChild(bodyContent);
+      body.innerHTML = "";
+      body.appendChild(content);
     }
-    modalButtons.innerHTML = '';
-    buttons.forEach(({text, onClick}) => {
-      const btn = document.createElement('button');
+    const btns = document.getElementById("modalButtons");
+    btns.innerHTML = "";
+    buttons.forEach(({ text, onClick }) => {
+      const btn = document.createElement("button");
       btn.textContent = text;
-      btn.addEventListener('click', () => {
+      btn.onclick = () => {
+        modal.classList.add("hidden");
         onClick();
-        closeModal();
-      });
-      modalButtons.appendChild(btn);
+      };
+      btns.appendChild(btn);
     });
-    modal.classList.remove('hidden');
-    modalClose.focus();
-  }
-  function closeModal() {
-    modal.classList.add('hidden');
-  }
-  modalClose.addEventListener('click', closeModal);
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-      closeModal();
-    }
-  });
-
-  // Voice selection menu
-  function openVoiceMenu() {
-    const container = document.createElement('div');
-    const maleBtn = document.createElement('button');
-    maleBtn.textContent = 'Männliche Stimme';
-    const femaleBtn = document.createElement('button');
-    femaleBtn.textContent = 'Weibliche Stimme';
-
-    maleBtn.addEventListener('click', () => {
-      settings.voiceGender = 'male';
-      saveSettings();
-      showInfo('Stimme auf männlich gesetzt');
-    });
-    femaleBtn.addEventListener('click', () => {
-      settings.voiceGender = 'female';
-      saveSettings();
-      showInfo('Stimme auf weiblich gesetzt');
-    });
-    container.appendChild(maleBtn);
-    container.appendChild(femaleBtn);
-
-    openModal('Stimme auswählen', container);
+    modal.classList.remove("hidden");
   }
 
-  // Language menu
-  function openLanguageMenu() {
-    const container = document.createElement('div');
-    const langs = [
-      {code: 'de-DE', name: 'Deutsch'},
-      {code: 'en-US', name: 'Englisch (USA)'},
-      {code: 'en-GB', name: 'Englisch (UK)'},
-      {code: 'fr-FR', name: 'Französisch'},
-      {code: 'es-ES', name: 'Spanisch'},
-      {code: 'it-IT', name: 'Italienisch'},
-      {code: 'ja-JP', name: 'Japanisch'},
-      {code: 'ru-RU', name: 'Russisch'},
-      {code: 'zh-CN', name: 'Chinesisch (Mandarin)'},
-    ];
-    langs.forEach(l => {
-      const btn = document.createElement('button');
-      btn.textContent = l.name;
-      btn.addEventListener('click', () => {
-        settings.language = l.code;
-        saveSettings();
-        showInfo(`Sprache auf ${l.name} gesetzt`);
-      });
-      container.appendChild(btn);
-    });
-    openModal('Sprache auswählen', container);
-  }
-
-  // Emotion menu
-  function openEmotionMenu() {
-    const container = document.createElement('div');
-    const emotions = [
-      {id: 'neutral', name: 'Neutral'},
-      {id: 'happy', name: 'Fröhlich'},
-      {id: 'sad', name: 'Traurig'},
-      {id: 'angry', name: 'Wütend'},
-    ];
-    emotions.forEach(e => {
-      const btn = document.createElement('button');
-      btn.textContent = e.name;
-      btn.addEventListener('click', () => {
-        settings.emotion = e.id;
-        saveSettings();
-        showInfo(`Stimmung auf ${e.name} gesetzt`);
-      });
-      container.appendChild(btn);
-    });
-    openModal('Stimmung auswählen', container);
-  }
-
-  // Saved sentences menu
   function openSavedSentencesMenu() {
-    if (savedSentences.length === 0) {
-      openModal('Gespeicherte Sätze', 'Keine gespeicherten Sätze gefunden.', [
-        {text: 'OK', onClick: () => {}}
-      ]);
-      return;
-    }
-    const container = document.createElement('ul');
-    container.style.listStyle = 'none';
-    container.style.padding = '0';
-    container.style.maxHeight = '200px';
-    container.style.overflowY = 'auto';
-    savedSentences.forEach(s => {
-      const li = document.createElement('li');
-      li.textContent = s;
-      li.style.padding = '0.4rem';
-      li.style.borderBottom = '1px solid #ccc';
-      li.style.cursor = 'pointer';
-      li.addEventListener('click', () => {
+    const container = document.createElement("div");
+    savedSentences.forEach((s) => {
+      const li = document.createElement("div");
+      li.textContent = `🔹 ${s}`;
+      li.style.padding = "0.25rem";
+      li.style.borderBottom = "1px solid #ccc";
+      li.style.cursor = "pointer";
+      li.onclick = () => {
         textInput.value = s;
-        closeModal();
-        textInput.focus();
-      });
+        document.getElementById("modal").classList.add("hidden");
+      };
       container.appendChild(li);
     });
-    openModal('Gespeicherte Sätze', container, [
-      { text: 'Schließen', onClick: () => {} },
-    ]);
+    openModal("Gespeicherte Sätze", container, [{ text: "Schließen", onClick: () => {} }]);
   }
 
-  // Hilfe-Menü
   function openHelpMenu() {
     const helpHTML = `
-      <ul style="padding-left: 1rem;">
-        <li><b>/stimme</b> – Stimme wählen (männlich/weiblich)</li>
+      <ul style="text-align: left">
+        <li><b>/stimme</b> – Stimme automatisch weiblich</li>
         <li><b>/sprache</b> – Sprache einstellen</li>
-        <li><b>/emotion</b> – Emotion setzen (neutral, fröhlich, traurig, wütend)</li>
-        <li><b>/darkmode</b> – Dunkelmodus an/aus</li>
+        <li><b>/emotion</b> – Emotion wählen (neutral, fröhlich, traurig, wütend, sexuell)</li>
+        <li><b>/darkmode</b> – Dark Mode an/aus</li>
         <li><b>/save</b> – Satz speichern</li>
-        <li><b>/favoriten</b> – gespeicherte Sätze anzeigen</li>
-        <li><b>/reset</b> – alle Einstellungen zurücksetzen</li>
-      </ul>
-    `;
-    openModal('Befehle & Hilfe', helpHTML, [
-      { text: 'OK', onClick: () => {} },
-    ]);
+        <li><b>/favoriten</b> – Gespeicherte Sätze anzeigen</li>
+        <li><b>/reset</b> – Einstellungen zurücksetzen</li>
+      </ul>`;
+    openModal("Befehle & Hilfe", helpHTML, [{ text: "OK", onClick: () => {} }]);
   }
 
-  // Initial Setup
-  speakBtn.addEventListener('click', () => {
-    const text = textInput.value.trim();
-    speak(text);
-  });
-
-  saveBtn.addEventListener('click', () => {
-    saveSentence(textInput.value);
-  });
-
-  clearSavedBtn.addEventListener('click', () => {
-    if (confirm('Alle gespeicherten Sätze wirklich löschen?')) {
+  speakBtn.onclick = () => speak(textInput.value);
+  saveBtn.onclick = () => saveSentence(textInput.value);
+  showSavedBtn.onclick = () => openSavedSentencesMenu();
+  clearSavedBtn.onclick = () => {
+    if (confirm("Wirklich alle gespeicherten Sätze löschen?")) {
       clearSavedSentences();
     }
-  });
-
-  toggleDarkModeBtn.addEventListener('click', () => {
+  };
+  toggleDarkModeBtn.onclick = () => {
     settings.darkMode = !settings.darkMode;
     applyDarkMode();
     saveSettings();
-    showInfo('Dark Mode ' + (settings.darkMode ? 'aktiviert' : 'deaktiviert'));
-  });
+  };
+  helpBtn.onclick = () => openHelpMenu();
 
-  // Lade alles
   loadSettings();
-  applyDarkMode();
   loadSavedSentences();
 
-  // Stimmen laden, wenn bereit
-  if (typeof speechSynthesis !== 'undefined') {
-    speechSynthesis.onvoiceschanged = () => {
-      getVoices(); // Trigger voice update
-    };
+  if (typeof speechSynthesis !== "undefined") {
+    speechSynthesis.onvoiceschanged = () => getVoices();
   }
 })();
