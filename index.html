@@ -1,43 +1,50 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Sag mir!</title>
-<link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Text-Vorleser</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="app">
-    <header>
-      <h1>Sag es mir! 🎤</h1>
-      <button id="toggleDarkMode" aria-label="Dark Mode umschalten">🌓</button>
-    </header>
+  <div class="app">
+    <h1>🗣️ Text-Vorleser</h1>
+    <textarea id="textInput" placeholder="Gib hier deinen Text ein..."></textarea>
 
-    <main>
-      <textarea id="textInput" placeholder="Gib hier deinen Text ein..."></textarea>
-      <button id="speakBtn">Vorlesen ▶️</button>
-      <button id="saveBtn" title="Satz speichern 💾">💾 Speichern</button>
+    <div class="controls">
+      <label>Sprache:
+        <select id="languageSelect">
+          <option value="de">Deutsch</option>
+          <option value="en">Englisch</option>
+          <option value="fr">Französisch</option>
+          <option value="es">Spanisch</option>
+          <option value="it">Italienisch</option>
+          <option value="pl">Polnisch</option>
+          <option value="nl">Niederländisch</option>
+        </select>
+      </label>
+      <div>
 
-      <div id="lastSavedContainer" style="display:none;">
-        <h3>Gespeicherte Sätze:</h3>
-        <ul id="savedList"></ul>
-        <button id="clearSaved">Alle löschen</button>
-      </div>
+    <div class="menu">
+      <button id="speakBtn">🔊 Vorlesen</button>
+      <button id="saveBtn">💾 Speichern</button>
+      <button id="showSavedBtn">⭐ Favoriten</button>
+      <button id="clearSavedBtn">❌ Favoriten löschen</button>
+      <button id="toggleDarkModeBtn">🌙 Dark Mode</button>
+      <button id="helpBtn">❓ Hilfe</button>
+    </div>
 
-      <p id="info">Tippe /hilfe für Befehle (z.B. /stimme, /sprache, /emotion, /darkmode)</p>
-    </main>
+    <p class="info" id="infoText"></p>
+  </div>
 
-    <!-- Modal Container -->
-    <div id="modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div id="modalContent">
-        <h2 id="modalTitle"></h2>
-        <div id="modalBody"></div>
-        <div id="modalButtons"></div>
-        <button id="modalClose" aria-label="Schließen">✖</button>
-      </div>
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <h2 id="modalTitle"></h2>
+      <div id="modalBody"></div>
+      <div id="modalButtons"></div>
     </div>
   </div>
 
-<script src="main.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>
